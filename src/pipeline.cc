@@ -301,6 +301,11 @@ class PipelineWorker : public Nan::AsyncWorker {
           const_cast<char*>(profileMap[VIPS_INTERPRETATION_sRGB].data()), VImage::option()
           ->set("input_profile", profileMap[VIPS_INTERPRETATION_CMYK].data())
           ->set("intent", VIPS_INTENT_PERCEPTUAL));
+      } else {
+        // ensure that untagged input images are output with an embdedded sRGB profile
+        image = image.icc_export(VImage::option()
+          ->set("output_profile", profileMap[VIPS_INTERPRETATION_sRGB].data())
+          ->set("intent", VIPS_INTENT_PERCEPTUAL));
       }
 
       // Flatten image to remove alpha channel
