@@ -301,11 +301,6 @@ class PipelineWorker : public Nan::AsyncWorker {
           const_cast<char*>(profileMap[VIPS_INTERPRETATION_sRGB].data()), VImage::option()
           ->set("input_profile", profileMap[VIPS_INTERPRETATION_CMYK].data())
           ->set("intent", VIPS_INTENT_PERCEPTUAL));
-      } else {
-        // ensure that untagged input images are output with an embdedded sRGB profile
-        image = image.icc_export(VImage::option()
-          ->set("output_profile", profileMap[VIPS_INTERPRETATION_sRGB].data())
-          ->set("intent", VIPS_INTENT_PERCEPTUAL));
       }
 
       // Flatten image to remove alpha channel
@@ -722,7 +717,7 @@ class PipelineWorker : public Nan::AsyncWorker {
         // Buffer output
         if (baton->formatOut == "jpeg" || (baton->formatOut == "input" && inputImageType == ImageType::JPEG)) {
           // Write JPEG to buffer
-          VipsArea *area = VIPS_AREA(image.jpegsave_buffer(VImage::option()
+          vips::VOption *option = VImage::option()
             ->set("strip", !baton->withMetadata)
             ->set("Q", baton->jpegQuality)
             ->set("interlace", baton->jpegProgressive)
@@ -730,7 +725,11 @@ class PipelineWorker : public Nan::AsyncWorker {
             ->set("trellis_quant", baton->jpegTrellisQuantisation)
             ->set("overshoot_deringing", baton->jpegOvershootDeringing)
             ->set("optimize_scans", baton->jpegOptimiseScans)
-            ->set("optimize_coding", TRUE)));
+            ->set("optimize_coding", TRUE);
+          if(baton->withMetadata && !sharp::HasProfile(image)) {
+            option->set("profile", (baton->iccProfilePath + "sRGB.icc").c_str());
+          }
+          VipsArea *area = VIPS_AREA(image.jpegsave_buffer(option));
           baton->bufferOut = static_cast<char*>(area->data);
           baton->bufferOutLength = area->length;
           area->free_fn = nullptr;
