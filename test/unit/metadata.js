@@ -364,6 +364,27 @@ describe('Image metadata', function () {
       });
   });
 
+  it('Add sRGB profile to PNG output from untagged image', function (done) {
+    sharp(fixtures.inputJpg)
+      .png()
+      .withMetadata()
+      .toBuffer(function (err, buffer) {
+        if (err) throw err;
+        sharp(buffer).metadata(function (err, metadata) {
+          if (err) throw err;
+          assert.strictEqual(true, metadata.hasProfile);
+          assert.strictEqual('object', typeof metadata.icc);
+          assert.strictEqual(true, metadata.icc instanceof Buffer);
+          const profile = icc.parse(metadata.icc);
+          assert.strictEqual('object', typeof profile);
+          assert.strictEqual('RGB', profile.colorSpace);
+          assert.strictEqual('Perceptual', profile.intent);
+          assert.strictEqual('Monitor', profile.deviceClass);
+          done();
+        });
+      });
+  });
+
   it('File input with corrupt header fails gracefully', function (done) {
     sharp(fixtures.inputJpgWithCorruptHeader)
       .metadata(function (err) {
