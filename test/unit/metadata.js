@@ -280,6 +280,27 @@ describe('Image metadata', function () {
     });
   });
 
+  it('Add sRGB profile to untagged image', function (done) {
+    sharp(fixtures.inputJpg)
+      .withMetadata()
+      .toBuffer(function (err, buffer) {
+        if (err) throw err;
+        sharp(buffer).metadata(function (err, metadata) {
+          if (err) throw err;
+          assert.strictEqual(true, metadata.hasProfile);
+          // ICC
+          assert.strictEqual('object', typeof metadata.icc);
+          assert.strictEqual(true, metadata.icc instanceof Buffer);
+          const profile = icc.parse(metadata.icc);
+          assert.strictEqual('object', typeof profile);
+          assert.strictEqual('RGB', profile.colorSpace);
+          assert.strictEqual('Perceptual', profile.intent);
+          assert.strictEqual('Monitor', profile.deviceClass);
+          done();
+        });
+      });
+  });
+
   it('Keep EXIF metadata and add sRGB profile after a resize', function (done) {
     sharp(fixtures.inputJpgWithExif)
       .resize(320, 240)
