@@ -717,7 +717,7 @@ class PipelineWorker : public Nan::AsyncWorker {
         // Buffer output
         if (baton->formatOut == "jpeg" || (baton->formatOut == "input" && inputImageType == ImageType::JPEG)) {
           // Write JPEG to buffer
-          VipsArea *area = VIPS_AREA(image.jpegsave_buffer(VImage::option()
+          vips::VOption *option = VImage::option()
             ->set("strip", !baton->withMetadata)
             ->set("Q", baton->jpegQuality)
             ->set("interlace", baton->jpegProgressive)
@@ -725,7 +725,11 @@ class PipelineWorker : public Nan::AsyncWorker {
             ->set("trellis_quant", baton->jpegTrellisQuantisation)
             ->set("overshoot_deringing", baton->jpegOvershootDeringing)
             ->set("optimize_scans", baton->jpegOptimiseScans)
-            ->set("optimize_coding", TRUE)));
+            ->set("optimize_coding", TRUE);
+          if (baton->withMetadata && !sharp::HasProfile(image)) {
+            option->set("profile", (baton->iccProfilePath + "sRGB.icc").c_str());
+          }
+          VipsArea *area = VIPS_AREA(image.jpegsave_buffer(option));
           baton->bufferOut = static_cast<char*>(area->data);
           baton->bufferOutLength = area->length;
           area->free_fn = nullptr;
@@ -743,10 +747,14 @@ class PipelineWorker : public Nan::AsyncWorker {
             vips_image_remove(image.get_image(), VIPS_META_ICC_NAME);
           }
           // Write PNG to buffer
-          VipsArea *area = VIPS_AREA(image.pngsave_buffer(VImage::option()
+          vips::VOption *option = VImage::option()
             ->set("interlace", baton->pngProgressive)
             ->set("compression", baton->pngCompressionLevel)
-            ->set("filter", baton->pngAdaptiveFiltering ? VIPS_FOREIGN_PNG_FILTER_ALL : VIPS_FOREIGN_PNG_FILTER_NONE)));
+            ->set("filter", baton->pngAdaptiveFiltering ? VIPS_FOREIGN_PNG_FILTER_ALL : VIPS_FOREIGN_PNG_FILTER_NONE);
+          if (baton->withMetadata && !sharp::HasProfile(image)) {
+            option->set("profile", (baton->iccProfilePath + "sRGB.icc").c_str());
+          }
+          VipsArea *area = VIPS_AREA(image.pngsave_buffer(option));
           baton->bufferOut = static_cast<char*>(area->data);
           baton->bufferOutLength = area->length;
           area->free_fn = nullptr;
@@ -805,7 +813,7 @@ class PipelineWorker : public Nan::AsyncWorker {
           !(isJpeg || isPng || isWebp || isTiff || isDz || isDzZip || isV);
         if (baton->formatOut == "jpeg" || isJpeg || (matchInput && inputImageType == ImageType::JPEG)) {
           // Write JPEG to file
-          image.jpegsave(const_cast<char*>(baton->fileOut.data()), VImage::option()
+          vips::VOption *option = VImage::option()
             ->set("strip", !baton->withMetadata)
             ->set("Q", baton->jpegQuality)
             ->set("interlace", baton->jpegProgressive)
@@ -813,7 +821,11 @@ class PipelineWorker : public Nan::AsyncWorker {
             ->set("trellis_quant", baton->jpegTrellisQuantisation)
             ->set("overshoot_deringing", baton->jpegOvershootDeringing)
             ->set("optimize_scans", baton->jpegOptimiseScans)
-            ->set("optimize_coding", TRUE));
+            ->set("optimize_coding", TRUE);
+          if (baton->withMetadata && !sharp::HasProfile(image)) {
+            option->set("profile", (baton->iccProfilePath + "sRGB.icc").c_str());
+          }
+          image.jpegsave(const_cast<char*>(baton->fileOut.data()), option);
           baton->formatOut = "jpeg";
           baton->channels = std::min(baton->channels, 3);
         } else if (baton->formatOut == "png" || isPng || (matchInput &&
@@ -823,10 +835,14 @@ class PipelineWorker : public Nan::AsyncWorker {
             vips_image_remove(image.get_image(), VIPS_META_ICC_NAME);
           }
           // Write PNG to file
-          image.pngsave(const_cast<char*>(baton->fileOut.data()), VImage::option()
+          vips::VOption *option = VImage::option()
             ->set("interlace", baton->pngProgressive)
             ->set("compression", baton->pngCompressionLevel)
-            ->set("filter", baton->pngAdaptiveFiltering ? VIPS_FOREIGN_PNG_FILTER_ALL : VIPS_FOREIGN_PNG_FILTER_NONE));
+            ->set("filter", baton->pngAdaptiveFiltering ? VIPS_FOREIGN_PNG_FILTER_ALL : VIPS_FOREIGN_PNG_FILTER_NONE);
+          if (baton->withMetadata && !sharp::HasProfile(image)) {
+            option->set("profile", (baton->iccProfilePath + "sRGB.icc").c_str());
+          }
+          image.pngsave(const_cast<char*>(baton->fileOut.data()), option);
           baton->formatOut = "png";
         } else if (baton->formatOut == "webp" || isWebp || (matchInput && inputImageType == ImageType::WEBP)) {
           // Write WEBP to file
@@ -839,10 +855,14 @@ class PipelineWorker : public Nan::AsyncWorker {
           baton->formatOut = "webp";
         } else if (baton->formatOut == "tiff" || isTiff || (matchInput && inputImageType == ImageType::TIFF)) {
           // Write TIFF to file
-          image.tiffsave(const_cast<char*>(baton->fileOut.data()), VImage::option()
+          vips::VOption *option = VImage::option()
             ->set("strip", !baton->withMetadata)
             ->set("Q", baton->tiffQuality)
-            ->set("compression", VIPS_FOREIGN_TIFF_COMPRESSION_JPEG));
+            ->set("compression", VIPS_FOREIGN_TIFF_COMPRESSION_JPEG);
+          if (baton->withMetadata && !sharp::HasProfile(image)) {
+            option->set("profile", (baton->iccProfilePath + "sRGB.icc").c_str());
+          }
+          image.tiffsave(const_cast<char*>(baton->fileOut.data()), option);
           baton->formatOut = "tiff";
           baton->channels = std::min(baton->channels, 3);
         } else if (baton->formatOut == "dz" || isDz || isDzZip) {
